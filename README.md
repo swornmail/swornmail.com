@@ -146,17 +146,24 @@ publishing with wrangler keeps them where they can actually stop a bad deploy.
 
 ### First-time setup
 
-1. Create a Pages project named `swornmail-com` (direct upload — not Git
-   integration, see above).
+1. ~~Create a Pages project named `swornmail-com`~~ — **done**. Direct upload,
+   production branch `main`. Live at
+   [swornmail-com.pages.dev](https://swornmail-com.pages.dev/).
 2. Create a scoped API token with **Account → Cloudflare Pages → Edit**.
-3. In this repository set:
-   - secret `CLOUDFLARE_API_TOKEN`
-   - variable `CLOUDFLARE_ACCOUNT_ID`
+3. In this repository set **the secret first, then the variable**:
 
-   Until the variable is set the publish job skips cleanly, so the repository
-   does not carry a red mark for a reason that is not a defect.
-4. Add `swornmail.com` and `www.swornmail.com` as custom domains on the
-   project. Pages handles the certificate and the apex record.
+   ```sh
+   gh secret set CLOUDFLARE_API_TOKEN          # paste the token
+   gh variable set CLOUDFLARE_ACCOUNT_ID --body <your-account-id>
+   ```
+
+   Order matters only for tidiness: with neither set the publish job skips
+   entirely; with the variable but no token it runs, skips the publish step and
+   emits a warning rather than failing.
+4. **Not yet done, and deliberately:** adding `swornmail.com` and
+   `www.swornmail.com` as custom domains. Pages would create the DNS records
+   itself — the zone is in the same Cloudflare account — which *is* the cutover.
+   Do this when the content is ready to be public.
 
 `www` → apex is a redirect rule at the zone level; Pages `_redirects` cannot
 match on hostname.
