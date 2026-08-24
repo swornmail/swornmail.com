@@ -149,17 +149,14 @@ publishing with wrangler keeps them where they can actually stop a bad deploy.
 1. ~~Create a Pages project named `swornmail-com`~~ — **done**. Direct upload,
    production branch `main`. Live at
    [swornmail-com.pages.dev](https://swornmail-com.pages.dev/).
-2. Create a scoped API token with **Account → Cloudflare Pages → Edit**.
-3. In this repository set **the secret first, then the variable**:
+2. ~~Create a scoped API token~~ — **done** (Account → Cloudflare Pages → Edit).
+3. ~~Set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`~~ — **done**.
+   Verified end to end: a `workflow_dispatch` run built, checked and published,
+   and the live deployment serves every header from `_headers`.
 
-   ```sh
-   gh secret set CLOUDFLARE_API_TOKEN          # paste the token
-   gh variable set CLOUDFLARE_ACCOUNT_ID --body <your-account-id>
-   ```
-
-   Order matters only for tidiness: with neither set the publish job skips
-   entirely; with the variable but no token it runs, skips the publish step and
-   emits a warning rather than failing.
+   If either is ever cleared: with neither set the publish job skips entirely;
+   with the variable but no token it skips the publish step and emits a warning
+   rather than failing.
 4. **Not yet done, and deliberately:** adding `swornmail.com` and
    `www.swornmail.com` as custom domains. Pages would create the DNS records
    itself — the zone is in the same Cloudflare account — which *is* the cutover.
