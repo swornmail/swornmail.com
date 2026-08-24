@@ -13,7 +13,7 @@ The one deliberate exception is the footer's "Maintained by PlatOps Security,
 LLC" credit, which every repository in the org carries and which is attribution
 rather than a product reference.
 
-Next.js static export, Tailwind, published to S3 behind CloudFront by GitHub
+Next.js static export, Tailwind, published to Cloudflare Pages by GitHub
 Actions on merge to `main`.
 
 ```sh
@@ -120,50 +120,58 @@ invites the reader to run it larger — a stronger claim than a bigger number.
 
 ## Deployment
 
-`infra/` provisions S3 + CloudFront + ACM + Route 53 and the OIDC role GitHub
-Actions assumes. `.github/workflows/deploy.yml` builds, publishes and then
-verifies the live site actually serves the new build.
+Cloudflare Pages, published by `.github/workflows/deploy.yml` on merge to
+`main`.
 
-> **`infra/` has never been applied.** It is written from the provider
-> documentation and validated (`terraform fmt`, `terraform validate`) but never
-> run against an account, because the AWS session was expired when it was
-> written. Treat the first `terraform plan` as its real review.
+**Why Pages and not AWS.** The stack was originally specified as S3 +
+CloudFront + Route 53, and the Terraform for it was written and validated
+before a fact turned up that changed the arithmetic: **DNS for swornmail.com
+and swornmail.dev is already on Cloudflare.** That made the AWS path
+strictly more work for the same result — an ACM validation record to add by
+hand, apex CNAME flattening, a grey-cloud caveat where proxying would silently
+rewrite the security headers, thirteen Terraform resources, and Terraform state
+to keep safe. Pages provisions the certificate and the apex record itself.
+Nothing was ever created in AWS; the Terraform was deleted rather than left to
+rot as a decoy.
 
-First-time setup:
+The one thing genuinely lost is infrastructure-as-code for the hosting itself.
+`_headers` covers the part that matters — the security policy is a reviewable
+file in this repository, not console state.
 
-```sh
-cd infra
-cp terraform.tfvars.example terraform.tfvars   # fill in bucket + hosted zone
-terraform init
-terraform plan       # read this properly; nothing here has been applied
-terraform apply
-```
+**Why the build stays in GitHub Actions** rather than using Pages' native Git
+integration: Pages would build and publish the site itself, and neither the
+checks in `deploy.yml` nor those in `public-boundary.yml` would run in the
+publish path. The guards would exist but gate nothing. Building here and
+publishing with wrangler keeps them where they can actually stop a bad deploy.
 
-Then set the three outputs as **repository variables** (not secrets — none of
-them is one):
+### First-time setup
 
-| Variable | From |
-|---|---|
-| `AWS_DEPLOY_ROLE_ARN` | `terraform output deploy_role_arn` |
-| `S3_BUCKET` | `terraform output bucket_name` |
-| `CLOUDFRONT_DISTRIBUTION_ID` | `terraform output distribution_id` |
+1. Create a Pages project named `swornmail-com` (direct upload — not Git
+   integration, see above).
+2. Create a scoped API token with **Account → Cloudflare Pages → Edit**.
+3. In this repository set:
+   - secret `CLOUDFLARE_API_TOKEN`
+   - variable `CLOUDFLARE_ACCOUNT_ID`
 
-Notes on choices worth not re-litigating:
+   Until the variable is set the publish job skips cleanly, so the repository
+   does not carry a red mark for a reason that is not a defect.
+4. Add `swornmail.com` and `www.swornmail.com` as custom domains on the
+   project. Pages handles the certificate and the apex record.
 
-- The bucket is **private**, reached through Origin Access Control. A public
-  bucket is also directly reachable, which bypasses every response header on
-  the distribution — including the CSP.
-- Auth is **OIDC**. There are no long-lived AWS keys in this repository, and
-  the role trust policy is scoped to this repo and `refs/heads/main`.
-- Fingerprinted assets upload first and are cached for a year; pages upload
-  second with `--delete` and a 60-second cache. That order means HTML never
-  arrives before the assets it references.
-- **The CSP carries `script-src 'unsafe-inline'`**, which is a real weakening.
-  A static export inlines bootstrap scripts whose contents change per build, so
-  neither a nonce (no server) nor a fixed hash list works without extracting
-  hashes in CI. The page loads no third-party script and accepts no input, so
-  residual risk is low — but if this site ever grows a form or an embed, fix
-  this first.
+`www` → apex is a redirect rule at the zone level; Pages `_redirects` cannot
+match on hostname.
+
+### Response headers
+
+`public/_headers` ships to the root of the deployment. The build fails if it is
+missing, because a site serving with no CSP is worse than a failed deploy.
+
+**The CSP carries `script-src 'unsafe-inline'`**, which is a real weakening. A
+static export inlines bootstrap scripts whose contents change per build, so
+neither a nonce (no server) nor a fixed hash list works without extracting
+hashes in CI. The page loads no third-party script and accepts no input, so
+residual risk is low — but if this site ever grows a form or an embed, fix this
+first.
 
 ## Facts still needed
 
@@ -178,6 +186,6 @@ site publishes.)*
 
 ## Not yet live
 
-Nothing is deployed and no AWS resources exist. The site states that SwornMail
-has no public deployments, which is accurate and must stay accurate until it is
-not.
+Nothing is deployed. No Cloudflare Pages project exists yet, and nothing was
+ever created in AWS. The site states that SwornMail has no public deployments,
+which is accurate and must stay accurate until it is not.

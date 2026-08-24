@@ -1,7 +1,13 @@
 name: Deploy
 
 # Builds on every pull request so a break is caught before merge, and
-# publishes only from main.
+# publishes to Cloudflare Pages from main.
+#
+# The build deliberately stays in GitHub Actions rather than using Pages'
+# native Git integration. Pages would build the site itself and publish it
+# without the checks in this file or in public-boundary.yml ever running —
+# so the guards would exist but would not gate anything. Building here and
+# publishing with wrangler keeps them in the path.
 on:
   push:
     branches: [main]
@@ -13,9 +19,6 @@ permissions:
   contents: read
 
 concurrency:
-  # A second push while a deploy is running should supersede it, not race it
-  # to the bucket. In-progress deploys are not cancelled: a half-finished
-  # sync is worse than a slightly stale one.
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
@@ -38,11 +41,12 @@ jobs:
 
       - name: Check the export is real
         # `next build` can succeed and still emit nothing useful if the export
-        # config is wrong. Publishing an empty bucket over a working site is
+        # config is wrong. Publishing an empty directory over a working site is
         # the failure this prevents.
         run: |
           test -f out/index.html || { echo "::error::out/index.html missing"; exit 1; }
           grep -q "SwornMail" out/index.html || { echo "::error::out/index.html has no content"; exit 1; }
+          test -f out/_headers || { echo "::error::_headers did not ship; the site would serve with no CSP"; exit 1; }
           echo "index.html: $(wc -c < out/index.html) bytes"
 
       - name: Check no external requests crept in
@@ -65,72 +69,23 @@ jobs:
 
   publish:
     needs: build
-    # Skips cleanly until the AWS infrastructure exists. Without the vars
-    # check this job fails on every merge until someone runs terraform, which
-    # puts a red mark on the repository for a reason that is not a defect and
-    # trains people to ignore the badge.
+    # Skips cleanly until the Cloudflare credentials exist, so the repository
+    # does not carry a permanent red mark for a reason that is not a defect.
     if: >-
       github.ref == 'refs/heads/main'
       && github.event_name != 'pull_request'
-      && vars.AWS_DEPLOY_ROLE_ARN != ''
-      && vars.S3_BUCKET != ''
-      && vars.CLOUDFRONT_DISTRIBUTION_ID != ''
+      && vars.CLOUDFLARE_ACCOUNT_ID != ''
     runs-on: ubuntu-latest
     environment: production
-    permissions:
-      contents: read
-      id-token: write # required to request the OIDC token
     steps:
       - uses: actions/download-artifact@v8
         with:
           name: site
           path: out
 
-      - name: Assume the deploy role
-        # OIDC: no long-lived AWS keys exist for this repository. The role
-        # trust policy is scoped to this repo and refs/heads/main.
-        uses: aws-actions/configure-aws-credentials@v5
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: us-east-1
-
-      - name: Upload fingerprinted assets
-        # First, and without --delete. These filenames contain a content hash,
-        # so they can be cached for a year and never need invalidating — and
-        # they must already be in place before any HTML referring to them is.
-        run: |
-          aws s3 sync out/_next s3://${{ vars.S3_BUCKET }}/_next \
-            --cache-control "public,max-age=31536000,immutable"
-
-      - name: Upload pages
-        # Second, with --delete so removed pages actually disappear. The
-        # exclude keeps this pass from deleting the assets uploaded above,
-        # including ones still referenced by HTML a reader already has.
-        run: |
-          aws s3 sync out s3://${{ vars.S3_BUCKET }} \
-            --delete --exclude "_next/*" \
-            --cache-control "public,max-age=60,must-revalidate"
-
-      - name: Invalidate the edge cache
-        # Only the pages need it; the fingerprinted assets never change under
-        # a given name.
-        run: |
-          id=$(aws cloudfront create-invalidation \
-                 --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} \
-                 --paths "/" "/index.html" "/404.html" \
-                 --query 'Invalidation.Id' --output text)
-          echo "invalidation $id"
-          aws cloudfront wait invalidation-completed \
-            --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} \
-            --id "$id"
-
-      - name: Verify the live site
-        # A deploy that reports success while serving the previous build, or a
-        # 403 from a bucket-policy mistake, is worth catching here rather than
-        # from a reader.
-        run: |
-          code=$(curl -s -o /tmp/live.html -w '%{http_code}' https://swornmail.com/)
-          test "$code" = "200" || { echo "::error::live site returned $code"; exit 1; }
-          grep -q "accountable entity" /tmp/live.html \
-            || { echo "::error::live site served unexpected content"; exit 1; }
-          echo "swornmail.com is serving the new build"
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy out --project-name=swornmail-com --branch=main
