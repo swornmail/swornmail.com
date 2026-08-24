@@ -1,0 +1,127 @@
+name: Deploy
+
+# Builds on every pull request so a break is caught before merge, and
+# publishes only from main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A second push while a deploy is running should supersede it, not race it
+  # to the bucket. In-progress deploys are not cancelled: a half-finished
+  # sync is worse than a slightly stale one.
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build static export
+        run: npm run build
+
+      - name: Check the export is real
+        # `next build` can succeed and still emit nothing useful if the export
+        # config is wrong. Publishing an empty bucket over a working site is
+        # the failure this prevents.
+        run: |
+          test -f out/index.html || { echo "::error::out/index.html missing"; exit 1; }
+          grep -q "SwornMail" out/index.html || { echo "::error::out/index.html has no content"; exit 1; }
+          echo "index.html: $(wc -c < out/index.html) bytes"
+
+      - name: Check no external requests crept in
+        # The site's credibility argument includes making no third-party
+        # requests. A stray font or analytics import should fail the build,
+        # not be discovered by a reader.
+        run: |
+          if grep -oE '(src|href)="https?://[^"]*"' out/index.html \
+             | grep -vE 'github\.com|crates\.io|platops\.com|swornmail\.com|w3\.org'; then
+            echo "::error::built HTML references an external resource"
+            exit 1
+          fi
+          echo "no external resource references"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: out/
+          retention-days: 7
+
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write # required to request the OIDC token
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: out
+
+      - name: Assume the deploy role
+        # OIDC: no long-lived AWS keys exist for this repository. The role
+        # trust policy is scoped to this repo and refs/heads/main.
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Upload fingerprinted assets
+        # First, and without --delete. These filenames contain a content hash,
+        # so they can be cached for a year and never need invalidating — and
+        # they must already be in place before any HTML referring to them is.
+        run: |
+          aws s3 sync out/_next s3://${{ vars.S3_BUCKET }}/_next \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Upload pages
+        # Second, with --delete so removed pages actually disappear. The
+        # exclude keeps this pass from deleting the assets uploaded above,
+        # including ones still referenced by HTML a reader already has.
+        run: |
+          aws s3 sync out s3://${{ vars.S3_BUCKET }} \
+            --delete --exclude "_next/*" \
+            --cache-control "public,max-age=60,must-revalidate"
+
+      - name: Invalidate the edge cache
+        # Only the pages need it; the fingerprinted assets never change under
+        # a given name.
+        run: |
+          id=$(aws cloudfront create-invalidation \
+                 --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} \
+                 --paths "/" "/index.html" "/404.html" \
+                 --query 'Invalidation.Id' --output text)
+          echo "invalidation $id"
+          aws cloudfront wait invalidation-completed \
+            --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --id "$id"
+
+      - name: Verify the live site
+        # A deploy that reports success while serving the previous build, or a
+        # 403 from a bucket-policy mistake, is worth catching here rather than
+        # from a reader.
+        run: |
+          code=$(curl -s -o /tmp/live.html -w '%{http_code}' https://swornmail.com/)
+          test "$code" = "200" || { echo "::error::live site returned $code"; exit 1; }
+          grep -q "accountable entity" /tmp/live.html \
+            || { echo "::error::live site served unexpected content"; exit 1; }
+          echo "swornmail.com is serving the new build"

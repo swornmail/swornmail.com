@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored: it
+# names the account's bucket and hosted zone, and this repository is public.
+
+bucket_name    = "swornmail-com-site-CHANGEME"
+hosted_zone_id = "ZXXXXXXXXXXXXXXXXXXXX"
+
+# Defaults that are usually right:
+# domain_name       = "swornmail.com"
+# github_repository = "swornmail/swornmail.com"
+# region            = "us-east-1"
+# price_class       = "PriceClass_100"
