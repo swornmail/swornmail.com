@@ -23,9 +23,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -57,7 +57,7 @@ jobs:
           fi
           echo "no external resource references"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: site
           path: out/
@@ -65,14 +65,23 @@ jobs:
 
   publish:
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Skips cleanly until the AWS infrastructure exists. Without the vars
+    # check this job fails on every merge until someone runs terraform, which
+    # puts a red mark on the repository for a reason that is not a defect and
+    # trains people to ignore the badge.
+    if: >-
+      github.ref == 'refs/heads/main'
+      && github.event_name != 'pull_request'
+      && vars.AWS_DEPLOY_ROLE_ARN != ''
+      && vars.S3_BUCKET != ''
+      && vars.CLOUDFRONT_DISTRIBUTION_ID != ''
     runs-on: ubuntu-latest
     environment: production
     permissions:
       contents: read
       id-token: write # required to request the OIDC token
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: site
           path: out
@@ -80,7 +89,7 @@ jobs:
       - name: Assume the deploy role
         # OIDC: no long-lived AWS keys exist for this repository. The role
         # trust policy is scoped to this repo and refs/heads/main.
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: us-east-1
