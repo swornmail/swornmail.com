@@ -626,11 +626,6 @@ export default function Home() {
                     after the command phase.
                   </li>
                   <li>
-                    The reputation feed that would consume these attestations is
-                    a separate, unreleased commercial service and is not part of
-                    the protocol.
-                  </li>
-                  <li>
                     Post-quantum signatures are designed for but not yet
                     registered.
                   </li>

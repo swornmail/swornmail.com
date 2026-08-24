@@ -1,9 +1,17 @@
 # swornmail.com
 
-The public marketing site for the SwornMail protocol. Advocacy, not commerce:
-nothing is sold here, and nothing commercial belongs here. The reputation feed
-is a separate, private service and appears on this site only as a stated
-limitation.
+The public marketing site for the SwornMail protocol. Advocacy, not commerce.
+
+**The site is protocol-only.** It carries no reference to the commercial
+reputation feed at all — not even as a limitation (Val, 2026-08-24). The
+`public-boundary` workflow enforces that: it fails the build if commercial
+language appears under `app/`, if private-side identifiers or credential
+patterns appear anywhere, or if the copy starts claiming adoption that does not
+exist.
+
+The one deliberate exception is the footer's "Maintained by PlatOps Security,
+LLC" credit, which every repository in the org carries and which is attribution
+rather than a product reference.
 
 Next.js static export, Tailwind, published to S3 behind CloudFront by GitHub
 Actions on merge to `main`.
