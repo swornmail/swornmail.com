@@ -188,8 +188,9 @@ first.
 *(Contact address resolved: `val@sworn.email`, confirmed working. It is what the
 site publishes.)*
 
-## Not yet live
+## Deployment state
 
-Nothing is deployed. No Cloudflare Pages project exists yet, and nothing was
-ever created in AWS. The site states that SwornMail has no public deployments,
-which is accurate and must stay accurate until it is not.
+The Pages project exists and the site is published; nothing was ever created in
+AWS. The site states that SwornMail has no public deployments, which is accurate
+and must stay accurate until it is not — that claim is about protocol adoption,
+not about this site being hosted.
