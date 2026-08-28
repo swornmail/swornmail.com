@@ -53,9 +53,9 @@ export default function Home() {
             <a href="#status" className="hidden text-sm text-muted hover:text-accent hover:underline md:inline">
               Status
             </a>
-            {/* Navigation slot reserved for swornmail.dev (documentation).
-                Until that site exists, documentation links point at the
-                repositories. */}
+            <a href="https://swornmail.dev/" className="text-sm text-muted hover:text-accent hover:underline">
+              Docs
+            </a>
             <a href="https://github.com/swornmail" className="text-sm text-muted hover:text-accent hover:underline">
               GitHub
             </a>
@@ -388,6 +388,13 @@ export default function Home() {
               implies any involvement by, or endorsement from, the Postfix or
               rspamd projects.
             </p>
+            <p className={`mt-6 ${PROSE}`}>
+              <a href="https://swornmail.dev/deploy/" className={LINK}>
+                Full operator guide&nbsp;→
+              </a>{" "}
+              on swornmail.dev, including every record tag and what to check
+              before leaving observe-only mode.
+            </p>
           </div>
         </section>
 
@@ -659,6 +666,11 @@ export default function Home() {
                 <h3 className={H3}>Read it</h3>
                 <ul className="list-disc pl-[1.1rem] [&>li]:mb-1.5">
                   <li>
+                    <a href="https://swornmail.dev/" className={LINK}>
+                      Reference documentation
+                    </a>
+                  </li>
+                  <li>
                     <a href="https://github.com/swornmail/spec" className={LINK}>
                       Internet-Draft and threat model
                     </a>
@@ -727,6 +739,7 @@ export default function Home() {
                 Protocol
               </h3>
               <ul className="[&>li]:mb-1.5">
+                <li><a href="https://swornmail.dev/" className={LINK}>Documentation</a></li>
                 <li><a href="https://github.com/swornmail/spec" className={LINK}>Specification</a></li>
                 <li><a href="https://github.com/swornmail/spec/blob/main/threat-model.md" className={LINK}>Threat model</a></li>
                 <li><a href="#status" className={LINK}>Status and limitations</a></li>
