@@ -9,9 +9,9 @@ language appears under `app/`, if private-side identifiers or credential
 patterns appear anywhere, or if the copy starts claiming adoption that does not
 exist.
 
-The one deliberate exception is the footer's "Maintained by PlatOps Security,
-LLC" credit, which every repository in the org carries and which is attribution
-rather than a product reference.
+The footer credits Val Kafedzhy as maintainer. There is no company name in any
+public material: the protocol is presented on its own terms, and naming the
+commercial entity alongside it invites the inference that the two are a package.
 
 Next.js static export, Tailwind, published to Cloudflare Pages by GitHub
 Actions on merge to `main`.

@@ -753,8 +753,8 @@ export default function Home() {
             </div>
           </div>
           <p className="mt-10 max-w-[60ch] text-[0.8125rem]">
-            SwornMail is an open protocol, licensed Apache-2.0. Maintained by{" "}
-            <a href="https://platops.com" className={LINK}>PlatOps Security, LLC</a>. A
+            SwornMail is an open protocol, licensed Apache-2.0. Maintained by
+            Val Kafedzhy. A
             provisional patent covering the mechanism is held personally and is
             pledged royalty-free: it exists to keep the mechanism open and will
             not be asserted against implementations.
