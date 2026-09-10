@@ -138,25 +138,31 @@ export default function Home() {
                 <p>
                   Aggregate at /64 and you punish shared infrastructure.
                   Aggregate wider and you punish an entire provider for one
-                  tenant. There is no correct answer, because the boundary you
-                  actually want is invisible.
+                  tenant. Since RFC 9977, an address holder can publish how
+                  large its end-sites are — the size of the unit. It still does
+                  not tell you who is accountable for one.
                 </p>
               </div>
               <div>
                 <h3 className={H3}>So IPv6 mail gets treated as suspect</h3>
                 <p>
                   Receivers respond to an unanswerable question with blanket
-                  caution. Email has become the last major workload that
-                  penalises operators for adopting IPv6 — at a point where IPv6
-                  carries more than half of global internet traffic.
+                  caution, and IPv6 senders face checks IPv4 senders do not.
+                  Microsoft 365, for one, may need the receiving organisation to
+                  opt in before it takes anonymous IPv6 mail at all, and then
+                  accepts it only from addresses with reverse DNS whose mail
+                  passes SPF or DKIM.
+                  That is a standing disincentive, at a point where about half
+                  of the users reaching Google already do so over IPv6.
                 </p>
               </div>
               <div>
                 <h3 className={H3}>The missing fact</h3>
                 <p>
-                  Which addresses constitute <em>one accountable entity</em> is
-                  an administrative fact. The operator knows it. The receiver
-                  cannot see it. Nothing in the mail stack carries it.
+                  <em>Who is accountable</em> for a range of addresses is an
+                  administrative fact. The mail operator knows it. The receiver
+                  cannot see it at connection time, and nothing in the mail
+                  stack carries it.
                 </p>
               </div>
             </div>
@@ -173,7 +179,7 @@ export default function Home() {
             <p className={LEDE}>
               Two DNS TXT records. Receivers verify at connection time, before
               message data, and key reputation on{" "}
-              <C>(operator domain, prefix)</C> instead of on individual
+              <C>(operator domain, observed /64)</C> instead of on individual
               addresses.
             </p>
 
@@ -258,7 +264,8 @@ export default function Home() {
                 who to hold responsible. Receivers and reputation services
                 decide what that is worth — and SwornMail is fail-open by
                 design: its absence or failure must never make treatment worse
-                than a receiver&rsquo;s existing default for unattested IPv6.
+                than a receiver&rsquo;s existing default for unattested IPv6,
+                for reputation or for delivery.
               </p>
             </div>
           </div>
@@ -270,9 +277,10 @@ export default function Home() {
             <p className={LABEL}>Deploy</p>
             <h2 className={H2}>Three commands and two DNS records.</h2>
             <p className={LEDE}>
-              Real output from the <C>sworn</C> CLI, abbreviated only where
-              marked. Addresses are from the documentation range{" "}
-              <C>2001:db8::/32</C>.
+              Real output from the <C>sworn</C> CLI, trimmed for length: the
+              key is shortened where it repeats, the token is elided, and the
+              DNS-panel forms and next-step hints are left out. Addresses are
+              from the documentation range <C>2001:db8::/32</C>.
             </p>
 
             <h3 className={H3}>1. Generate a signing key</h3>
@@ -286,7 +294,7 @@ export default function Home() {
                   (mode 0600 — keep it secret, back it up)
                 </span>
                 {"\n"}
-                public key  gJvTSUnyzNPsehUuIhWlLwPOcCRvbiM+fbCLseUpAf0=
+                public key  dI6VtBXnxGKWqjtrL3rzidPUDEhrKGJXDuVTd3Soco0=
               </code>
             </pre>
 
@@ -302,8 +310,7 @@ export default function Home() {
                 {"   "}zone file:{"\n"}
                 {"     "}2026a._sworn.mailer.example.com. 3600 IN TXT{" "}
                 <span className="tok-k">
-                  &quot;v=SWORN1; k=ed25519;
-                  pk=gJvTSUnyzNPsehUuIhWlLwPOcCRvbiM+fbCLseUpAf0=&quot;
+                  &quot;v=SWORN1; k=ed25519; pk=dI6VtBX…co0=&quot;
                 </span>
                 {"\n\n"}
                 2. policy record — the prefixes you stand behind{"\n"}
@@ -350,10 +357,17 @@ export default function Home() {
             </h3>
             <pre className="code-block mb-4">
               <code>
+                <span className="tok-c">$</span> TOKEN=$(sworn sign --key
+                2026a.key --selector 2026a \{"\n"}
+                {"      "}--domain mailer.example.com --prefix
+                2001:db8:f00::/48){"\n"}
                 <span className="tok-c">$</span> sworn verify $TOKEN --ip
-                2001:db8:f00:1234::25 --key gJvTSUn…Af0={"\n"}
+                2001:db8:f00:1234::25 \{"\n"}
+                {"      "}--policy &apos;v=SWORN1; p=2001:db8:f00::/48;
+                u=64&apos; --key dI6VtBX…co0={"\n"}
                 <span className="tok-k">
                   sworn=pass op=mailer.example.com unit=2001:db8:f00:1234::/64
+                  observed=2001:db8:f00:1234::/64
                 </span>
                 {"\n"}
                 <span className="tok-c">$?</span> 0{"\n\n"}
@@ -362,16 +376,18 @@ export default function Home() {
                 </span>
                 {"\n"}
                 <span className="tok-c">$</span> sworn verify $TOKEN --ip
-                2001:db8:999::25 --key gJvTSUn…Af0={"\n"}
+                2001:db8:999::25 \{"\n"}
+                {"      "}--policy &apos;v=SWORN1; p=2001:db8:f00::/48;
+                u=64&apos; --key dI6VtBX…co0={"\n"}
                 <span className="tok-k">sworn=fail reason=off_prefix</span>
                 {"\n"}
                 <span className="tok-c">$?</span> 1
               </code>
             </pre>
             <p className={CAPTION}>
-              A stolen key alone buys nothing: the attestation is bound to the
-              address space it was issued for, so it cannot be replayed from
-              anywhere else.
+              A stolen key alone buys little: it can sign only for prefixes the
+              operator&rsquo;s published policy already authorises, and a token
+              verifies only from inside the prefix it names.
             </p>
 
             <h3 className={H3}>Integrations</h3>
@@ -411,8 +427,10 @@ export default function Home() {
             </p>
             <div className="grid max-w-[52rem] gap-x-10 gap-y-6 sm:grid-cols-2">
               <p>
-                An operator in testing mode is reported as{" "}
-                <C>sworn=none policy.testing=y</C>. Conforming receivers stake
+                An operator in testing mode whose checks would all pass is
+                reported as <C>sworn=none policy.testing=y</C> instead of{" "}
+                <C>pass</C>; a failing check is still reported as a failure.
+                Conforming receivers stake
                 no reputation on them in either direction — not credit, not
                 blame. You can watch how your traffic would be classified
                 without having accepted accountability for anything.
@@ -438,12 +456,13 @@ export default function Home() {
         {/* ============ vs SPF/DKIM/DMARC ============ */}
         <section id="compare" className={SECTION}>
           <div className={WRAP}>
-            <p className={LABEL}>Relationship to what you already run</p>
+            <p className={LABEL}>Relationship to what already exists</p>
             <h2 className={H2}>It attests the connection, not the message.</h2>
             <p className={LEDE}>
               SwornMail replaces nothing. SPF, DKIM and DMARC answer questions
-              about a message and the domain it claims. SwornMail answers a
-              question none of them ask.
+              about a message and the domain it claims; RFC 9977 publishes how
+              address space is divided. SwornMail answers a question none of
+              them ask.
             </p>
 
             <div className="my-6 overflow-x-auto">
@@ -485,6 +504,14 @@ export default function Home() {
                       “Do those results line up with the visible <C>From:</C>,
                       and what should I do if not?”
                     </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">RFC 9977</th>
+                    <td>
+                      An address holder&rsquo;s published end-site size,
+                      optionally RPKI-signed
+                    </td>
+                    <td>“How large is one end-site in this range?”</td>
                   </tr>
                   <tr>
                     <th scope="row">SwornMail</th>
@@ -529,7 +556,7 @@ export default function Home() {
                 <h3 className={H3}>What does exist</h3>
                 <ul className="list-disc pl-[1.1rem] [&>li]:mb-1.5">
                   <li>
-                    A frozen <C>-01</C> wire format with 62 published
+                    A frozen <C>-01</C> wire format with 85 published
                     conformance vectors
                   </li>
                   <li>
@@ -597,15 +624,15 @@ export default function Home() {
                     syntax, and the conformance vectors are a public contract.
                   </li>
                   <li>
-                    62 conformance vectors (48 token, 14 record), published in
-                    the spec repository.
+                    85 conformance vectors (48 token, 27 record, 10 policy
+                    authorisation), published in the spec repository.
                   </li>
                   <li>
                     Two implementations agree. A differential harness generates
                     an adversarial corpus and runs both verifiers over it —
-                    3,048 cases at the default setting, zero accept/reject or
+                    3,059 cases at the default setting, zero accept/reject or
                     result divergences. A second harness cross-checks record
-                    parsing between the Go and Lua implementations across 217
+                    parsing between the Go and Lua implementations across 259
                     cases, also with zero divergences.
                   </li>
                   <li>
@@ -626,6 +653,11 @@ export default function Home() {
                   <li>
                     No public deployments. Nobody is running this in production,
                     including us.
+                  </li>
+                  <li>
+                    DNS-only mode is experimental in the current revision:
+                    receivers should give it low weight until there is
+                    operational experience.
                   </li>
                   <li>
                     The SMTP extension mode needs software that speaks the

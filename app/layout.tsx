@@ -7,8 +7,9 @@ export const metadata: Metadata = {
   // /deploy/ both resolve; without this a crawler picks its own winner.
   alternates: { canonical: "/" },
   title: "SwornMail — an accountable unit for IPv6 mail",
+  // Kept under 160 characters, where search results start truncating.
   description:
-    "SwornMail lets a sending operator attest that an IPv6 prefix is one accountable entity, staked on their domain — so receivers get a stable reputation unit instead of 2^64 unusable addresses. Open protocol, Apache-2.0.",
+    "SwornMail is an open protocol for IPv6 email reputation: an operator attests that a prefix is one accountable entity, staked on its domain. Fail-open.",
   // No image is referenced on purpose: a preview fetcher pulling an image is
   // still an external request, and there is no product screenshot worth
   // showing because there is no product.
@@ -20,11 +21,9 @@ export const metadata: Metadata = {
       "IP reputation is arithmetically dead against 2^64 addresses. SwornMail lets the sender declare the accountable unit, and stake a domain name on it.",
   },
   twitter: { card: "summary" },
-  // Inline SVG favicon: no external request, no file to serve.
-  icons: {
-    icon:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2314487A'/%3E%3Cpath d='M8 11h16M8 16h16M8 21h9' stroke='%23fff' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E",
-  },
+  // Same-origin SVG favicon. Still no external request, and unlike the data:
+  // URI it replaces, it is a URL a search engine can fetch and show.
+  icons: { icon: "/favicon.svg" },
 };
 
 /**
