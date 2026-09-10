@@ -154,9 +154,9 @@ publishing with wrangler keeps them where they can actually stop a bad deploy.
    Verified end to end: a `workflow_dispatch` run built, checked and published,
    and the live deployment serves every header from `_headers`.
 
-   If either is ever cleared: with neither set the publish job skips entirely;
-   with the variable but no token it skips the publish step and emits a warning
-   rather than failing.
+   Both are repository **secrets**, so neither prints in run logs. If either is
+   ever cleared, the publish step skips and the run emits a warning rather than
+   failing.
 4. **Not yet done, and deliberately:** adding `swornmail.com` and
    `www.swornmail.com` as custom domains. Pages would create the DNS records
    itself — the zone is in the same Cloudflare account — which *is* the cutover.
