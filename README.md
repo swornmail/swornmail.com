@@ -104,19 +104,43 @@ them accurately.
 Every technical claim was checked against the tooling before it was written.
 
 - Terminal output in the deploy section is real, captured from `sworn`
-  keygen / genrecord / verify. The only edits are truncating one base64 key and
-  eliding a `$TOKEN` value.
+  keygen / genrecord / sign / verify against the current CLI, which applies
+  policy authorisation and reports the observed unit. The only edits are
+  shortening the key where it repeats, eliding the `$TOKEN` value, and leaving
+  out the DNS-panel forms and next-step hints.
 - Record formats match `cmd/genvectors` output.
-- 62 conformance vectors = 48 token + 14 record, confirmed by running it.
+- 85 conformance vectors = 48 token + 27 record + 10 policy-authorisation,
+  counted from `spec/test-vectors/v1.json`.
+- Differential corpus sizes are counted from the generators: 3,059 token cases
+  at the default `--fuzz 3000` (59 structured), and 259 record cases (236
+  policy, 23 eligibility).
+- The Microsoft 365 IPv6 requirement comes from Microsoft's own mail-flow
+  documentation. "About half of the users reaching Google" is Google's IPv6
+  measurement, which counts users, not traffic.
 - All repository links were checked and resolve; all five are public.
 
 **One correction to the original brief.** It specified "5,048 differential test
 cases". That is not a fixed property — `cmd/difftest` takes a `--fuzz` flag
-defaulting to 3000, so the default run is 3,048 cases (48 structured + 3,000
-fuzz), and 5,048 came from a larger run. Publishing a flag-dependent number as a
-fact would have been wrong, and it is the kind of wrong this audience finds. The
-site states the reproducible default, says the corpus size is a parameter, and
-invites the reader to run it larger — a stronger claim than a bigger number.
+defaulting to 3000, so the default run is 3,059 cases today (59 structured +
+3,000 fuzz; there were 48 structured cases before the policy-authorisation
+revision added more), and 5,048 came from a larger run. Publishing a
+flag-dependent number as a fact would have been wrong, and it is the kind of
+wrong this audience finds. The site states the reproducible default, says the
+corpus size is a parameter, and invites the reader to run it larger — a
+stronger claim than a bigger number.
+
+## Discovery files
+
+`public/` ships three small files next to `_headers`, all same-origin:
+
+- `favicon.svg`: the favicon as a real URL. Search engines do not use a
+  `data:` URI favicon.
+- `llms.txt`: a plain-text map of the project, the documentation and the
+  draft, for assistants.
+- `security.txt` (RFC 9116): served at `/.well-known/security.txt` by a 200
+  rewrite in `_redirects`, because `deploy.yml` fails on any dot-directory in
+  `out/`. **Its `Expires` field (2027-09-01) must be moved forward before
+  then.**
 
 ## Deployment
 

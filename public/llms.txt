@@ -1,0 +1,18 @@
+# SwornMail
+
+> SwornMail is an open protocol that lets a sending mail operator attest, verifiably and at SMTP connection time, that an IPv6 address belongs to a declared prefix under one accountable domain. Receivers key reputation on (operator domain, observed /64) instead of on individual addresses, of which a single /64 holds 2^64. It is fail-open: absence or failure of attestation must never make treatment worse. It is specified in an Internet-Draft that has not yet been submitted to the IETF; it is not a standard, and there are no public deployments.
+
+## Project
+
+- [swornmail.com](https://swornmail.com/): the /64 problem, how SwornMail works, deployment, status and limitations
+
+## Documentation
+
+- [Reference documentation](https://swornmail.dev/): record format, verification and results, operator deployment, implementations
+- [Deploy as an operator](https://swornmail.dev/deploy/): generate a key and DNS records, publish, verify; starts in observe-only mode
+
+## Specification
+
+- [Internet-Draft](https://github.com/swornmail/spec/blob/main/draft-kafedzhy-swornmail-01.md): draft-kafedzhy-swornmail-01, the normative text
+- [Threat model](https://github.com/swornmail/spec/blob/main/threat-model.md): assets, adversaries, analyzed attacks, residual risks
+- [Code](https://github.com/swornmail): Go reference and CLI, Rust verifier, Postfix milter, rspamd module
