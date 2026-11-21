@@ -106,13 +106,14 @@ Every technical claim was checked against the tooling before it was written.
 - Terminal output in the deploy section is real, captured from `sworn`
   keygen / genrecord / sign / verify against the current CLI, which applies
   policy authorisation and reports the observed unit. The only edits are
-  shortening the key where it repeats, eliding the `$TOKEN` value, and leaving
-  out the DNS-panel forms and next-step hints.
+  shortening the key inside the key record and leaving out the DNS-panel forms
+  and next-step hints. The key on the page is a throwaway generated for the
+  example; the verify commands run as printed.
 - Record formats match `cmd/genvectors` output.
-- 85 conformance vectors = 48 token + 27 record + 10 policy-authorisation,
+- 123 conformance vectors = 74 token + 39 record + 10 policy-authorisation,
   counted from `spec/test-vectors/v1.json`.
-- Differential corpus sizes are counted from the generators: 3,059 token cases
-  at the default `--fuzz 3000` (59 structured), and 259 record cases (236
+- Differential corpus sizes are counted from the generators: 3,155 token cases
+  at the default `--fuzz 3000` (155 structured), and 266 record cases (243
   policy, 23 eligibility).
 - The Microsoft 365 IPv6 requirement comes from Microsoft's own mail-flow
   documentation. "About half of the users reaching Google" is Google's IPv6
@@ -121,7 +122,7 @@ Every technical claim was checked against the tooling before it was written.
 
 **One correction to the original brief.** It specified "5,048 differential test
 cases". That is not a fixed property — `cmd/difftest` takes a `--fuzz` flag
-defaulting to 3000, so the default run is 3,059 cases today (59 structured +
+defaulting to 3000, so the default run is 3,155 cases today (155 structured +
 3,000 fuzz; there were 48 structured cases before the policy-authorisation
 revision added more), and 5,048 came from a larger run. Publishing a
 flag-dependent number as a fact would have been wrong, and it is the kind of

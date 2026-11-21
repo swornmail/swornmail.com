@@ -177,8 +177,9 @@ export default function Home() {
               The operator states the boundary, and signs their name to it.
             </h2>
             <p className={LEDE}>
-              Two DNS TXT records. Receivers verify at connection time, before
-              message data, and key reputation on{" "}
+              Two DNS TXT records: a policy record that lists the prefixes,
+              and a key record for signing tokens. Receivers check at
+              connection time, before message data, and key reputation on{" "}
               <C>(operator domain, observed /64)</C> instead of on individual
               addresses.
             </p>
@@ -228,7 +229,7 @@ export default function Home() {
                 </p>
                 <ol className="list-decimal pl-[1.1rem] text-sm [&>li]:mb-1.5 [&>li:last-child]:mb-0">
                   <li>Discover the operator accountable for the source address</li>
-                  <li>Fetch and verify their published policy</li>
+                  <li>Fetch the policy record that operator publishes</li>
                   <li>Confirm the address really falls inside the attested prefix</li>
                   <li>
                     Key reputation on <C>2001:db8:f00:1234::/64</C>
@@ -244,18 +245,33 @@ export default function Home() {
             <h3 className={H3}>Two modes</h3>
             <div className="grid max-w-[52rem] gap-x-10 gap-y-6 sm:grid-cols-2">
               <p>
-                <strong>DNS-only.</strong> Publish the records; nothing in your
-                mail software changes. Receivers discover the operator from the
-                connecting address. This is deployable today and is the baseline
-                the protocol is designed around.
+                <strong>DNS-only.</strong> Publish the policy record; nothing
+                in your mail software changes. A receiver finds your domain
+                from the connecting address, through reverse DNS, then confirms
+                that the address lies inside a prefix your policy record lists.
+                No signature is checked and the key record is not used. This is
+                deployable today and is the baseline the protocol is designed
+                around.
               </p>
               <p>
                 <strong>Signed token.</strong> An SMTP extension carries a
-                compact signed token verified statelessly at connection time,
-                for stronger source authenticity. Optional, and it requires
-                software that speaks the extension.
+                compact token, signed with the key in the key record and
+                verified statelessly at connection time, for stronger source
+                authenticity. Optional, and it requires software that speaks
+                the extension.
               </p>
             </div>
+            <p className={`mt-6 ${PROSE}`}>
+              In DNS-only mode the two records above are not enough for a
+              receiver to find you. Reverse DNS has to lead to your domain, one
+              of two ways: a pointer record in the reverse zone of the
+              enclosing /64 or /48, or a PTR name for the sending address that
+              resolves back to that address and is your domain or a host
+              beneath it. A receiver follows one PTR name and tries at most
+              five names from it, stopping before a public suffix. If neither
+              path reaches a domain whose policy lists the address, the result
+              is <C>none</C>, whatever you published.
+            </p>
 
             <div className={NOTE}>
               <p className={PROSE}>
@@ -278,8 +294,9 @@ export default function Home() {
             <h2 className={H2}>Three commands and two DNS records.</h2>
             <p className={LEDE}>
               Real output from the <C>sworn</C> CLI, trimmed for length: the
-              key is shortened where it repeats, the token is elided, and the
-              DNS-panel forms and next-step hints are left out. Addresses are
+              key is shortened inside the key record, the token stays in a
+              shell variable, and the DNS-panel forms and next-step hints are
+              left out. Addresses are
               from the documentation range <C>2001:db8::/32</C>.
             </p>
 
@@ -294,7 +311,7 @@ export default function Home() {
                   (mode 0600 — keep it secret, back it up)
                 </span>
                 {"\n"}
-                public key  dI6VtBXnxGKWqjtrL3rzidPUDEhrKGJXDuVTd3Soco0=
+                public key  fNHryB1muA5Jo+1L8bqtFWDUzNPBPrZsoVQPAmIGHIE=
               </code>
             </pre>
 
@@ -310,7 +327,7 @@ export default function Home() {
                 {"   "}zone file:{"\n"}
                 {"     "}2026a._sworn.mailer.example.com. 3600 IN TXT{" "}
                 <span className="tok-k">
-                  &quot;v=SWORN1; k=ed25519; pk=dI6VtBX…co0=&quot;
+                  &quot;v=SWORN1; k=ed25519; pk=fNHryB1…HIE=&quot;
                 </span>
                 {"\n\n"}
                 2. policy record — the prefixes you stand behind{"\n"}
@@ -357,33 +374,60 @@ export default function Home() {
             </h3>
             <pre className="code-block mb-4">
               <code>
+                <span className="tok-c">$</span>{" "}
+                KEY=fNHryB1muA5Jo+1L8bqtFWDUzNPBPrZsoVQPAmIGHIE={"\n"}
                 <span className="tok-c">$</span> TOKEN=$(sworn sign --key
                 2026a.key --selector 2026a \{"\n"}
                 {"      "}--domain mailer.example.com --prefix
-                2001:db8:f00::/48){"\n"}
+                2001:db8:f00::/48){"\n\n"}
+                <span className="tok-c">
+                  # against the record from step 2, which is still observe-only
+                </span>
+                {"\n"}
                 <span className="tok-c">$</span> sworn verify $TOKEN --ip
                 2001:db8:f00:1234::25 \{"\n"}
-                {"      "}--policy &apos;v=SWORN1; p=2001:db8:f00::/48;
-                u=64&apos; --key dI6VtBX…co0={"\n"}
+                {"      "}--policy &apos;v=SWORN1; p=2001:db8:f00::/48; u=64;{" "}
+                <span className="tok-f">t=y</span>&apos; --key $KEY{"\n"}
                 <span className="tok-k">
-                  sworn=pass op=mailer.example.com unit=2001:db8:f00:1234::/64
+                  sworn=none policy.testing=y policy.wouldbe=pass
+                  op=mailer.example.com unit=2001:db8:f00:1234::/64
                   observed=2001:db8:f00:1234::/64
                 </span>
                 {"\n"}
-                <span className="tok-c">$?</span> 0{"\n\n"}
+                <span className="tok-c">$?</span> 4{"\n\n"}
                 <span className="tok-c">
                   # the same token, presented from outside the attested prefix
                 </span>
                 {"\n"}
                 <span className="tok-c">$</span> sworn verify $TOKEN --ip
                 2001:db8:999::25 \{"\n"}
-                {"      "}--policy &apos;v=SWORN1; p=2001:db8:f00::/48;
-                u=64&apos; --key dI6VtBX…co0={"\n"}
+                {"      "}--policy &apos;v=SWORN1; p=2001:db8:f00::/48; u=64;{" "}
+                <span className="tok-f">t=y</span>&apos; --key $KEY{"\n"}
                 <span className="tok-k">sworn=fail reason=off_prefix</span>
                 {"\n"}
-                <span className="tok-c">$?</span> 1
+                <span className="tok-c">$?</span> 1{"\n\n"}
+                <span className="tok-c">
+                  # the record genrecord --testing=false prints: no t=y
+                </span>
+                {"\n"}
+                <span className="tok-c">$</span> sworn verify $TOKEN --ip
+                2001:db8:f00:1234::25 \{"\n"}
+                {"      "}--policy &apos;v=SWORN1; p=2001:db8:f00::/48;
+                u=64&apos; --key $KEY{"\n"}
+                <span className="tok-k">
+                  sworn=pass op=mailer.example.com unit=2001:db8:f00:1234::/64
+                  observed=2001:db8:f00:1234::/64
+                </span>
+                {"\n"}
+                <span className="tok-c">$?</span> 0
               </code>
             </pre>
+            <p className={CAPTION}>
+              <C>--policy</C> and <C>--key</C> hand <C>verify</C> the policy
+              record and the public key directly, so this runs before anything is published;
+              without them it fetches both from DNS. <C>KEY</C> is the public
+              key from step 1.
+            </p>
             <p className={CAPTION}>
               A stolen key alone buys little: it can sign only for prefixes the
               operator&rsquo;s published policy already authorises, and a token
@@ -403,6 +447,23 @@ export default function Home() {
               are available for the receiving side. We wrote both; neither
               implies any involvement by, or endorsement from, the Postfix or
               rspamd projects.
+            </p>
+            <p className={`mt-4 ${PROSE}`}>
+              Whatever reads the result must trust it only when it was stamped
+              inside your own boundary. A sender can write{" "}
+              <C>sworn=pass</C> into a message, and both integrations are set up to fail
+              open: while the one that removes forged results is down, mail is
+              still delivered and a filter that trusts an inbound{" "}
+              <C>sworn=pass</C> is scoring what the sender wrote. The receiver
+              guides for the{" "}
+              <a href="https://swornmail.dev/milter/#forged" className={LINK}>
+                milter
+              </a>{" "}
+              and{" "}
+              <a href="https://swornmail.dev/rspamd/#forged" className={LINK}>
+                rspamd
+              </a>{" "}
+              on swornmail.dev cover the setup.
             </p>
             <p className={`mt-6 ${PROSE}`}>
               <a href="https://swornmail.dev/deploy/" className={LINK}>
@@ -556,7 +617,7 @@ export default function Home() {
                 <h3 className={H3}>What does exist</h3>
                 <ul className="list-disc pl-[1.1rem] [&>li]:mb-1.5">
                   <li>
-                    A frozen <C>-01</C> wire format with 85 published
+                    A frozen <C>-01</C> wire format with 123 published
                     conformance vectors
                   </li>
                   <li>
@@ -624,15 +685,15 @@ export default function Home() {
                     syntax, and the conformance vectors are a public contract.
                   </li>
                   <li>
-                    85 conformance vectors (48 token, 27 record, 10 policy
+                    123 conformance vectors (74 token, 39 record, 10 policy
                     authorisation), published in the spec repository.
                   </li>
                   <li>
                     Two implementations agree. A differential harness generates
                     an adversarial corpus and runs both verifiers over it —
-                    3,059 cases at the default setting, zero accept/reject or
+                    3,155 cases at the default setting, zero accept/reject or
                     result divergences. A second harness cross-checks record
-                    parsing between the Go and Lua implementations across 259
+                    parsing between the Go and Lua implementations across 266
                     cases, also with zero divergences.
                   </li>
                   <li>
