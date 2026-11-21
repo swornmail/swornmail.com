@@ -268,9 +268,12 @@ export default function Home() {
               enclosing /64 or /48, or a PTR name for the sending address that
               resolves back to that address and is your domain or a host
               beneath it. A receiver follows one PTR name and tries at most
-              five names from it, stopping before a public suffix. If neither
-              path reaches a domain whose policy lists the address, the result
-              is <C>none</C>, whatever you published.
+              five names from it, stopping before a public suffix; a receiver
+              with no public-suffix list instead skips any name with fewer
+              than three labels. If neither path reaches a domain whose policy
+              lists the address, the result is <C>none</C>, whatever you
+              published. A DNS failure during the walk, or a walk that would
+              need more than ten queries, gives <C>temperror</C> instead.
             </p>
 
             <div className={NOTE}>
@@ -314,6 +317,11 @@ export default function Home() {
                 public key  fNHryB1muA5Jo+1L8bqtFWDUzNPBPrZsoVQPAmIGHIE=
               </code>
             </pre>
+            <p className={CAPTION}>
+              The key shown is sample output. <C>keygen</C> makes a new key
+              each run, so yours will differ. Note the <C>public key</C> value
+              it prints: the last step needs it.
+            </p>
 
             <h3 className={H3}>2. Generate the records</h3>
             <pre className="code-block mb-4">
@@ -374,8 +382,12 @@ export default function Home() {
             </h3>
             <pre className="code-block mb-4">
               <code>
-                <span className="tok-c">$</span>{" "}
-                KEY=fNHryB1muA5Jo+1L8bqtFWDUzNPBPrZsoVQPAmIGHIE={"\n"}
+                <span className="tok-c">
+                  # your own public key, as keygen printed it in step 1
+                </span>
+                {"\n"}
+                <span className="tok-c">$</span> KEY=&apos;
+                <span className="tok-f">your public key</span>&apos;{"\n"}
                 <span className="tok-c">$</span> TOKEN=$(sworn sign --key
                 2026a.key --selector 2026a \{"\n"}
                 {"      "}--domain mailer.example.com --prefix
@@ -425,8 +437,14 @@ export default function Home() {
             <p className={CAPTION}>
               <C>--policy</C> and <C>--key</C> hand <C>verify</C> the policy
               record and the public key directly, so this runs before anything is published;
-              without them it fetches both from DNS. <C>KEY</C> is the public
-              key from step 1.
+              without them it fetches both from DNS. Set <C>KEY</C> to the
+              public key your own <C>keygen</C> printed in step 1, not the
+              sample key shown there: the token is signed with your key, and
+              against any other key the result is{" "}
+              <C>sworn=fail reason=bad_signature</C>. If you did not keep it,
+              it is the <C>pk=</C> value in the key record that{" "}
+              <C>genrecord</C> prints. The outputs shown do not depend on the
+              key.
             </p>
             <p className={CAPTION}>
               A stolen key alone buys little: it can sign only for prefixes the

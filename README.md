@@ -108,7 +108,11 @@ Every technical claim was checked against the tooling before it was written.
   policy authorisation and reports the observed unit. The only edits are
   shortening the key inside the key record and leaving out the DNS-panel forms
   and next-step hints. The key on the page is a throwaway generated for the
-  example; the verify commands run as printed.
+  example and is labelled as sample output. The verify commands take the
+  reader's own public key in `KEY`, because the token is signed with the key
+  their `keygen` wrote; with the sample key the result is
+  `sworn=fail reason=bad_signature`. The outputs shown are the same for any
+  key.
 - Record formats match `cmd/genvectors` output.
 - 123 conformance vectors = 74 token + 39 record + 10 policy-authorisation,
   counted from `spec/test-vectors/v1.json`.
